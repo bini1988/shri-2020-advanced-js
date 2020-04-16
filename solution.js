@@ -32,4 +32,21 @@ function enhanceIn(object) {
   });
 }
 
-module.exports = { allKeysAndSymbols, enhanceIn };
+/**
+ * Функция принимающая генератор внутри которого позволяет делать асинхронные вызовы
+ * @param {Function} generator
+ */
+function asyncExecutor(generator) {
+  const iterator = generator();
+
+  function walk({ value, done }) {
+    const promise = Promise.resolve(value);
+
+    return done ? promise : promise
+      .then(value => walk(iterator.next(value)))
+      .catch(error => walk(iterator.throw(error)));
+  }
+  return walk(iterator.next());
+}
+
+module.exports = { allKeysAndSymbols, enhanceIn, asyncExecutor };

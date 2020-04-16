@@ -1,6 +1,6 @@
 const deepEqualInAnyOrder = require('deep-equal-in-any-order');
 const chai = require('chai');
-const { allKeysAndSymbols, enhanceIn } = require('./solution');
+const { allKeysAndSymbols, enhanceIn, asyncExecutor } = require('./solution');
 
 chai.use(deepEqualInAnyOrder);
 
@@ -85,5 +85,44 @@ describe('Оператор in, который игнорирует свойст�
     const proxy = enhanceIn(object);
 
     chai.expect('value' in proxy).to.equal(false);
+  });
+});
+
+describe('Функция, которая позволит использовать внутри генератора асинхронные вызовы', function() {
+  const ID = 42;
+  const PASS = 'pass';
+  const FAIL = 'fail';
+  const getId = () => new Promise(res => setTimeout(() => res(ID), 200));
+  const getDataById = id => new Promise((res, rej) =>
+    setTimeout(() => id === ID ? res(PASS) : rej(FAIL), 200)
+  );
+
+  it('Последовательно выполняет ассинхронные вызовы', function(done) {
+    asyncExecutor(function* () {
+      const id = yield getId();
+      chai.expect(id).to.equal(ID);
+
+      const data = yield getDataById(id);
+      chai.expect(data).to.equal(PASS);
+
+      done();
+    });
+  });
+  it('Завершит последовательное выполнение ассинхронных вызовов с ошибкой', function(done) {
+    asyncExecutor(function* () {
+      try {
+        const id = yield getId();
+        chai.expect(id).to.equal(ID);
+
+        yield getDataById(`[${id}]`);
+      } catch (error) {
+        chai.expect(error).to.equal(FAIL);
+
+        const id = yield 10;
+        chai.expect(id).to.equal(10);
+      } finally {
+        done();
+      }
+    });
   });
 });
