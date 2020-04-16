@@ -1,6 +1,6 @@
 const deepEqualInAnyOrder = require('deep-equal-in-any-order');
 const chai = require('chai');
-const { allKeysAndSymbols } = require('./solution');
+const { allKeysAndSymbols, enhanceIn } = require('./solution');
 
 chai.use(deepEqualInAnyOrder);
 
@@ -46,5 +46,44 @@ describe('Функция принимает объект и возвращает
     chai.expect(items).to.deep.equalInAnyOrder([
       'a', 'b', 'c', 'Symbol(A)', 'd', 'Symbol(B)',
     ]);
+  });
+});
+
+describe('Оператор in, который игнорирует свойства прототипа', function() {
+  it('Свойство находится в самом объекте', function() {
+    const object = { value: 1 };
+    const symbol = Symbol('bazzinga');
+
+    object[symbol] = 42;
+
+    Object.defineProperty(object, 'year', {
+      value: 2020,
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+
+    const proxy = enhanceIn(object);
+
+    chai.expect('value' in proxy).to.equal(true);
+    chai.expect('year' in proxy).to.equal(true);
+    chai.expect(symbol in proxy).to.equal(true);
+  });
+  it('Свойство находится в прототипе объекта', function() {
+    const symbol = Symbol('bazzinga');
+    const proto = { value: 1 };
+    proto[symbol] = 42;
+
+    const object = Object.create(proto);
+    const proxy = enhanceIn(object);
+
+    chai.expect('value' in proxy).to.equal(false);
+    chai.expect(symbol in proxy).to.equal(false);
+  });
+  it('Свойство отсутствует в объекте', function() {
+    const object = {};
+    const proxy = enhanceIn(object);
+
+    chai.expect('value' in proxy).to.equal(false);
   });
 });
